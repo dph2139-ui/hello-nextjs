@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import LoginButton from '@/components/LoginButton'
+import RateButton from '@/components/RateButton'
 
 export default async function Home() {
     const cookieStore = await cookies()
@@ -63,11 +64,14 @@ export default async function Home() {
                         {dataRecords.length > 0 ? (
                             <ul className="space-y-4">
                                 {dataRecords.map((item) => (
-                                    <li key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
-                                        {/* Displaying 'content' based on the row you shared earlier */}
-                                        <p className="text-gray-800">{item.content}</p>
+                                    <li key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50 mb-4">
+                                        <p className="text-gray-800 font-medium">{item.content}</p>
+
+                                        {/* Pass the ID of the post to the RateButton */}
+                                        <RateButton captionId={item.id} />
+
                                         <div className="text-xs text-gray-400 mt-2">
-                                            ID: {item.id.substring(0, 8)}... | Likes: {item.like_count}
+                                            ID: {item.id.substring(0, 8)}...
                                         </div>
                                     </li>
                                 ))}
