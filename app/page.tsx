@@ -26,7 +26,8 @@ export default async function Home() {
     let dataRecords: any[] = []
     if (user) {
         // Replace 'posts' with your actual table name if it's different
-        const { data } = await supabase.from('sidechat_posts').select('*')
+        // Change 'sidechat_posts' or 'caption_votes' to just 'captions'
+        const { data } = await supabase.from('captions').select('*')
         dataRecords = data || []
     }
 

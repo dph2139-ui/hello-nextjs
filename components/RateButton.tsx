@@ -11,18 +11,30 @@ export default function RateButton({ captionId }: { captionId: string }) {
     )
 
     const handleVote = async (isUpvote: boolean) => {
+        // 1. Get the current user's session data
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+            alert("You must be logged in to vote!")
+            return
+        }
+
+        // 2. Insert the vote including the profile_id (the user's ID)
         const { error } = await supabase
             .from('caption_votes')
             .insert({
-                caption_id: captionId, // Matches your table
-                vote_value: isUpvote ? 1 : -1, // Use 1 and -1 instead of strings
+                caption_id: captionId,
+                vote_value: isUpvote ? 1 : -1,
+                created_datetime_utc: new Date().toISOString(),
+                // FIX: Providing the user's ID to satisfy the profile_id requirement
+                profile_id: user.id
             })
 
         if (error) {
             console.error('Error details:', error)
             alert(`Error: ${error.message}`)
         } else {
-            alert('Vote submitted!')
+            alert('Vote submitted successfully!')
             router.refresh()
         }
     }
