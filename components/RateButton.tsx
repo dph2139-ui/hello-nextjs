@@ -11,19 +11,18 @@ export default function RateButton({ captionId }: { captionId: string }) {
     )
 
     const handleVote = async (isUpvote: boolean) => {
-        // 1. Mutate the data: Insert a new row into caption_votes
         const { error } = await supabase
             .from('caption_votes')
             .insert({
-                caption_id: captionId,
-                vote_type: isUpvote ? 'up' : 'down',
+                caption_id: captionId, // Matches your table
+                vote_value: isUpvote ? 1 : -1, // Use 1 and -1 instead of strings
             })
 
         if (error) {
-            console.error('Error voting:', error.message)
-            alert('Could not submit vote. Make sure you are logged in!')
+            console.error('Error details:', error)
+            alert(`Error: ${error.message}`)
         } else {
-            // 2. Refresh the page to show the updated vote count (optional)
+            alert('Vote submitted!')
             router.refresh()
         }
     }
