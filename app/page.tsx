@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import LoginButton from '@/components/LoginButton'
 import RateButton from '@/components/RateButton'
+import ImageUploader from '@/components/ImageUploader'
 
 export default async function Home() {
     const cookieStore = await cookies()
@@ -54,32 +55,42 @@ export default async function Home() {
               <span>
                 <strong>Success!</strong> Logged in as: {user.email}
               </span>
-                            {/* Optional: Simple Sign Out Link */}
                             <a href="/" className="text-xs underline text-green-900">Refresh</a>
                         </div>
 
-                        <h2 className="text-xl font-bold mb-4 text-gray-700 border-b pb-2">
-                            Protected Database Data:
-                        </h2>
+                        {/* --- STEP 1: THE NEW AI UPLOADER --- */}
+                        <div className="mb-12">
+                            <h2 className="text-xl font-bold mb-4 text-gray-700 border-b pb-2">
+                                Step 1: Generate AI Captions
+                            </h2>
+                            <ImageUploader />
+                        </div>
 
-                        {dataRecords.length > 0 ? (
-                            <ul className="space-y-4">
-                                {dataRecords.map((item) => (
-                                    <li key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50 mb-4">
-                                        <p className="text-gray-800 font-medium">{item.content}</p>
+                        {/* --- STEP 2: THE EXISTING VOTING FEED --- */}
+                        <div>
+                            <h2 className="text-xl font-bold mb-4 text-gray-700 border-b pb-2">
+                                Step 2: Rate Captions
+                            </h2>
 
-                                        {/* Pass the ID of the post to the RateButton */}
-                                        <RateButton captionId={item.id} />
+                            {dataRecords.length > 0 ? (
+                                <ul className="space-y-4">
+                                    {dataRecords.map((item) => (
+                                        <li key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
+                                            <p className="text-gray-800 font-medium">{item.content}</p>
 
-                                        <div className="text-xs text-gray-400 mt-2">
-                                            ID: {item.id.substring(0, 8)}...
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-gray-500 italic">No records found or RLS is blocking access.</p>
-                        )}
+                                            {/* This is your voting component from last assignment */}
+                                            <RateButton captionId={item.id} />
+
+                                            <div className="text-xs text-gray-400 mt-4">
+                                                ID: {item.id.substring(0, 8)}...
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-gray-500 italic">No records found in captions.</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

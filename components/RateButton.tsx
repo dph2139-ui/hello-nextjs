@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
@@ -11,7 +12,6 @@ export default function RateButton({ captionId }: { captionId: string }) {
     )
 
     const handleVote = async (isUpvote: boolean) => {
-        // 1. Get the current user's session data
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
@@ -19,14 +19,12 @@ export default function RateButton({ captionId }: { captionId: string }) {
             return
         }
 
-        // 2. Insert the vote including the profile_id (the user's ID)
         const { error } = await supabase
             .from('caption_votes')
             .insert({
                 caption_id: captionId,
                 vote_value: isUpvote ? 1 : -1,
                 created_datetime_utc: new Date().toISOString(),
-                // FIX: Providing the user's ID to satisfy the profile_id requirement
                 profile_id: user.id
             })
 
@@ -40,18 +38,21 @@ export default function RateButton({ captionId }: { captionId: string }) {
     }
 
     return (
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-4 mt-4">
             <button
                 onClick={() => handleVote(true)}
-                className="bg-gray-200 hover:bg-green-200 px-3 py-1 rounded text-sm"
+                className="px-4 py-2 bg-white border-2 border-gray-400 rounded-md shadow-sm hover:bg-gray-100 font-black flex items-center gap-2 transition-colors"
+                style={{ color: '#000000' }} /* FORCE BLACK TEXT */
             >
-                👍 Upvote
+                <span style={{ fontSize: '1.2rem' }}>👍</span> Upvote
             </button>
+
             <button
                 onClick={() => handleVote(false)}
-                className="bg-gray-200 hover:bg-red-200 px-3 py-1 rounded text-sm"
+                className="px-4 py-2 bg-white border-2 border-gray-400 rounded-md shadow-sm hover:bg-gray-100 font-black flex items-center gap-2 transition-colors"
+                style={{ color: '#000000' }} /* FORCE BLACK TEXT */
             >
-                👎 Downvote
+                <span style={{ fontSize: '1.2rem' }}>👎</span> Downvote
             </button>
         </div>
     )
