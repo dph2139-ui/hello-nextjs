@@ -37,7 +37,7 @@ export default async function Home() {
         <main className="p-10 flex flex-col items-center min-h-screen bg-gray-50">
             <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-md">
                 <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-                    AlmostCrackd — Caption Generator
+                    AlmostCrackd — AI Caption Generator & Rating
                 </h1>
 
                 {!user ? (
