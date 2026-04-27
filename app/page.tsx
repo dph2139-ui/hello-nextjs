@@ -22,6 +22,7 @@ export default async function Home() {
 
     // 2. Check if the user is authenticated
     const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
 
     // 3. If logged in, fetch the data from your table
     let dataRecords: any[] = []
@@ -36,7 +37,7 @@ export default async function Home() {
         <main className="p-10 flex flex-col items-center min-h-screen bg-gray-50">
             <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-md">
                 <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-                    Assignment #3: Gated UI
+                    AlmostCrackd — Caption Generator
                 </h1>
 
                 {!user ? (
@@ -63,7 +64,8 @@ export default async function Home() {
                             <h2 className="text-xl font-bold mb-4 text-gray-700 border-b pb-2">
                                 Step 1: Generate AI Captions
                             </h2>
-                            <ImageUploader />
+                            {/* PASS THE userId AS A PROP HERE */}
+                            <ImageUploader userId={userId} />
                         </div>
 
                         {/* --- STEP 2: THE EXISTING VOTING FEED --- */}
@@ -79,7 +81,7 @@ export default async function Home() {
                                             <p className="text-gray-800 font-medium">{item.content}</p>
 
                                             {/* This is your voting component from last assignment */}
-                                            <RateButton captionId={item.id} />
+                                            <RateButton captionId={item.id} userId={userId} />
 
                                             <div className="text-xs text-gray-400 mt-4">
                                                 ID: {item.id.substring(0, 8)}...
@@ -96,7 +98,7 @@ export default async function Home() {
             </div>
 
             <footer className="mt-10 text-gray-400 text-xs text-center">
-                Assignment 3 • Built with Next.js & Supabase Auth
+                Built with Next.js & Supabase
             </footer>
         </main>
     )
