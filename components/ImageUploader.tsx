@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
-export default function ImageUploader() {
+export default function ImageUploader({ userId }: { userId?: string }) {
     const [uploading, setUploading] = useState(false)
     const [captions, setCaptions] = useState<any[]>([])
 
@@ -62,6 +62,26 @@ export default function ImageUploader() {
             const generatedCaptions = await res4.json()
 
             setCaptions(generatedCaptions)
+
+            // --- STEP 5: SAVE TO DATABASE [NEW] ---
+            if (userId && generatedCaptions.length > 0) {
+                // We map through the AI results and save each one
+                for (const caption of generatedCaptions) {
+                    const content = typeof caption === 'string' ? caption : (caption.content || "");
+
+                    const { error: dbError } = await supabase
+                        .from('captions')
+                        .insert([{
+                            content: content,
+                            image_id: imageId, // ID from the AI pipeline
+                            // THE TWO MANDATORY AUDIT FIELDS:
+                            created_by_user_id: userId,
+                            modified_by_user_id: userId
+                        }])
+
+                    if (dbError) console.error("DB Save Error:", dbError.message)
+                }
+            }
 
         } catch (err: any) {
             console.error(err)
