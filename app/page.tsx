@@ -75,16 +75,19 @@ export default async function Home() {
                             </h2>
 
                             {dataRecords.length > 0 ? (
-                                <ul className="space-y-4">
+                                <ul className="space-y-6">
                                     {dataRecords.map((item) => (
-                                        <li key={item.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50">
-                                            <p className="text-gray-800 font-medium">{item.content}</p>
-
-                                            {/* This is your voting component from last assignment */}
-                                            <RateButton captionId={item.id} userId={userId} />
-
-                                            <div className="text-xs text-gray-400 mt-4">
-                                                ID: {item.id.substring(0, 8)}...
+                                        <li key={item.id} className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
+                                            {item.image_url && (
+                                                <img
+                                                    src={item.image_url}
+                                                    alt="Caption image"
+                                                    className="w-full max-h-72 object-cover"
+                                                />
+                                            )}
+                                            <div className="p-4">
+                                                <p className="text-gray-800 font-semibold text-lg">{item.content}</p>
+                                                <RateButton captionId={item.id} userId={userId} />
                                             </div>
                                         </li>
                                     ))}

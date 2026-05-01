@@ -73,8 +73,8 @@ export default function ImageUploader({ userId }: { userId?: string }) {
                         .from('captions')
                         .insert([{
                             content: content,
-                            image_id: imageId, // ID from the AI pipeline
-                            // THE TWO MANDATORY AUDIT FIELDS:
+                            image_id: imageId,
+                            image_url: cdnUrl,
                             created_by_user_id: userId,
                             modified_by_user_id: userId
                         }])
