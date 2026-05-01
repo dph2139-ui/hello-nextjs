@@ -7,100 +7,86 @@ import ImageUploader from '@/components/ImageUploader'
 export default async function Home() {
     const cookieStore = await cookies()
 
-    // 1. Initialize Supabase Server Client
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value
-                },
-            },
-        }
+        { cookies: { get(name: string) { return cookieStore.get(name)?.value } } }
     )
 
-    // 2. Check if the user is authenticated
     const { data: { user } } = await supabase.auth.getUser()
     const userId = user?.id
 
-    // 3. If logged in, fetch the data from your table
-    let dataRecords: any[] = []
+    let captions: any[] = []
     if (user) {
-        // Replace 'posts' with your actual table name if it's different
-        // Change 'sidechat_posts' or 'caption_votes' to just 'captions'
-        const { data } = await supabase.from('captions').select('*')
-        dataRecords = data || []
+        const { data } = await supabase
+            .from('captions')
+            .select('*')
+            .order('created_datetime_utc', { ascending: false })
+        captions = data || []
     }
 
     return (
-        <main className="p-10 flex flex-col items-center min-h-screen bg-gray-50">
-            <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-md">
-                <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-                    AlmostCrackd — AI Caption Generator & Rating
-                </h1>
-
-                {!user ? (
-                    /* --- CASE A: GATED (Logged Out) --- */
-                    <div className="text-center py-10">
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-                            <p className="font-bold">Access Restricted</p>
-                            <p className="text-sm">You must be logged in with Google to view the database.</p>
-                        </div>
-                        <LoginButton />
-                    </div>
-                ) : (
-                    /* --- CASE B: AUTHORIZED (Logged In) --- */
-                    <div>
-                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-8 flex justify-between items-center">
-              <span>
-                <strong>Success!</strong> Logged in as: {user.email}
-              </span>
-                            <a href="/" className="text-xs underline text-green-900">Refresh</a>
-                        </div>
-
-                        {/* --- STEP 1: THE NEW AI UPLOADER --- */}
-                        <div className="mb-12">
-                            <h2 className="text-xl font-bold mb-4 text-gray-700 border-b pb-2">
-                                Step 1: Generate AI Captions
-                            </h2>
-                            {/* PASS THE userId AS A PROP HERE */}
-                            <ImageUploader userId={userId} />
-                        </div>
-
-                        {/* --- STEP 2: THE EXISTING VOTING FEED --- */}
-                        <div>
-                            <h2 className="text-xl font-bold mb-4 text-gray-700 border-b pb-2">
-                                Step 2: Rate Captions
-                            </h2>
-
-                            {dataRecords.length > 0 ? (
-                                <ul className="space-y-6">
-                                    {dataRecords.map((item) => (
-                                        <li key={item.id} className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
-                                            {item.image_url && (
-                                                <img
-                                                    src={item.image_url}
-                                                    alt="Caption image"
-                                                    className="w-full max-h-72 object-cover"
-                                                />
-                                            )}
-                                            <div className="p-4">
-                                                <p className="text-gray-800 font-semibold text-lg">{item.content}</p>
-                                                <RateButton captionId={item.id} userId={userId} />
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-gray-500 italic">No records found in captions.</p>
-                            )}
-                        </div>
-                    </div>
+        <main className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h1 className="text-xl font-black text-gray-900 tracking-tight">AlmostCrackd 😂</h1>
+                {user && (
+                    <span className="text-sm text-gray-500">{user.email}</span>
                 )}
-            </div>
+            </header>
 
-            <footer className="mt-10 text-gray-400 text-xs text-center">
+            {!user ? (
+                /* --- LOGGED OUT --- */
+                <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center">
+                    <p className="text-5xl mb-6">😂</p>
+                    <h2 className="text-3xl font-black text-gray-900 mb-2">Rate AI-generated captions</h2>
+                    <p className="text-gray-500 mb-8 max-w-sm">Upload a photo, get AI captions, and vote on what's actually funny.</p>
+                    <LoginButton />
+                </div>
+            ) : (
+                <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
+
+                    {/* Upload section */}
+                    <section>
+                        <h2 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Generate Captions</h2>
+                        <ImageUploader userId={userId} />
+                    </section>
+
+                    {/* Caption feed */}
+                    <section>
+                        <h2 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Rate Captions</h2>
+                        {captions.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+                                No captions yet — upload an image above to get started.
+                            </div>
+                        ) : (
+                            <ul className="space-y-4">
+                                {captions.map((item) => (
+                                    <li key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                                        {item.image_url ? (
+                                            <img
+                                                src={item.image_url}
+                                                alt="Caption image"
+                                                className="w-full max-h-72 object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-300 text-sm">
+                                                No image
+                                            </div>
+                                        )}
+                                        <div className="p-4">
+                                            <p className="font-semibold text-gray-800 text-lg leading-snug">{item.content}</p>
+                                            <RateButton captionId={item.id} userId={userId} />
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </section>
+                </div>
+            )}
+
+            <footer className="text-center text-xs text-gray-300 py-8">
                 Built with Next.js & Supabase
             </footer>
         </main>

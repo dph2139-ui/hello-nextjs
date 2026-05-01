@@ -2,10 +2,17 @@
 
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import RateButton from '@/components/RateButton'
+
+interface GeneratedCaption {
+    id: string
+    content: string
+}
 
 export default function ImageUploader({ userId }: { userId?: string }) {
     const [uploading, setUploading] = useState(false)
-    const [captions, setCaptions] = useState<any[]>([])
+    const [imagePreview, setImagePreview] = useState<string | null>(null)
+    const [captions, setCaptions] = useState<GeneratedCaption[]>([])
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,119 +25,83 @@ export default function ImageUploader({ userId }: { userId?: string }) {
 
         setUploading(true)
         setCaptions([])
+        setImagePreview(URL.createObjectURL(file))
 
         try {
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
-
             if (!token) throw new Error("Please log in again.")
 
-            const headers = {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-            // Step 1: Generate Presigned URL
+            // Step 1: Presigned URL
             const res1 = await fetch('https://api.almostcrackd.ai/pipeline/generate-presigned-url', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ contentType: file.type })
+                method: 'POST', headers, body: JSON.stringify({ contentType: file.type })
             })
             const { presignedUrl, cdnUrl } = await res1.json()
 
-            // Step 2: Upload Bytes
-            await fetch(presignedUrl, {
-                method: "PUT",
-                headers: { "Content-Type": file.type },
-                body: file
-            })
+            // Step 2: Upload to S3
+            await fetch(presignedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
 
-            // Step 3: Register Image
+            // Step 3: Register image
             const res3 = await fetch('https://api.almostcrackd.ai/pipeline/upload-image-from-url', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ imageUrl: cdnUrl, isCommonUse: false })
+                method: 'POST', headers, body: JSON.stringify({ imageUrl: cdnUrl, isCommonUse: false })
             })
             const { imageId } = await res3.json()
 
-            // Step 4: Generate Captions
+            // Step 4: Generate captions
             const res4 = await fetch('https://api.almostcrackd.ai/pipeline/generate-captions', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ imageId })
+                method: 'POST', headers, body: JSON.stringify({ imageId })
             })
             const generatedCaptions = await res4.json()
 
-            setCaptions(generatedCaptions)
-
-            // --- STEP 5: SAVE TO DATABASE [NEW] ---
-            if (userId && generatedCaptions.length > 0) {
-                // We map through the AI results and save each one
+            // Step 5: Save to DB and collect inserted IDs
+            const saved: GeneratedCaption[] = []
+            if (userId && Array.isArray(generatedCaptions)) {
                 for (const caption of generatedCaptions) {
-                    const content = typeof caption === 'string' ? caption : (caption.content || "");
-
-                    const { error: dbError } = await supabase
+                    const content = typeof caption === 'string' ? caption : (caption.content || '')
+                    const { data } = await supabase
                         .from('captions')
-                        .insert([{
-                            content: content,
-                            image_id: imageId,
-                            image_url: cdnUrl,
-                            created_by_user_id: userId,
-                            modified_by_user_id: userId
-                        }])
-
-                    if (dbError) console.error("DB Save Error:", dbError.message)
+                        .insert([{ content, image_id: imageId, image_url: cdnUrl, created_by_user_id: userId, modified_by_user_id: userId }])
+                        .select('id')
+                        .single()
+                    if (data) saved.push({ id: data.id, content })
                 }
             }
 
+            setCaptions(saved)
         } catch (err: any) {
             console.error(err)
-            alert("Error: " + err.message)
+            alert('Error: ' + err.message)
         } finally {
             setUploading(false)
         }
     }
 
     return (
-        <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg bg-white shadow-md">
-            {/* Heading with Stubborn Fix */}
-            <h3 className="text-xl font-bold mb-4" style={{ color: '#000000' }}>
-                Upload Image for AI Captions
-            </h3>
+        <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div className="p-5 border-b border-gray-100">
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUpload}
+                    disabled={uploading}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {uploading && <p className="mt-3 text-sm text-blue-600 font-medium animate-pulse">Analyzing image and generating captions…</p>}
+            </div>
 
-            <input
-                type="file"
-                accept="image/*"
-                onChange={handleUpload}
-                disabled={uploading}
-                className="block w-full text-sm mb-4"
-                style={{ color: '#000000' }}
-            />
-
-            {uploading && (
-                <p className="text-blue-600 font-bold animate-pulse">
-                    Analyzing image and generating captions...
-                </p>
-            )}
-
-            {captions.length > 0 && (
-                <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-300">
-                    {/* Section Header with Stubborn Fix */}
-                    <h4 className="font-black mb-3 text-lg border-b border-gray-400 pb-1" style={{ color: '#000000' }}>
-                        AI Generated Results:
-                    </h4>
-
-                    <ul className="space-y-3">
-                        {captions.map((c, i) => (
-                            <li
-                                key={i}
-                                className="p-4 bg-white rounded shadow border border-gray-200 text-lg font-bold"
-                                style={{ color: '#000000' }} // THE STUBBORN FIX
-                            >
-                                {typeof c === 'string' ? c : (c.content || "Caption generated")}
-                            </li>
+            {imagePreview && captions.length > 0 && (
+                <div>
+                    <img src={imagePreview} alt="Uploaded" className="w-full max-h-64 object-cover" />
+                    <div className="divide-y divide-gray-100">
+                        {captions.map((c) => (
+                            <div key={c.id} className="p-4">
+                                <p className="font-semibold text-gray-800">{c.content}</p>
+                                <RateButton captionId={c.id} userId={userId} />
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 </div>
             )}
         </div>

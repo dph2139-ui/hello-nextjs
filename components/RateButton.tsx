@@ -1,65 +1,78 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
-export default function RateButton({ captionId }: { captionId: string; userId?: string }) {
+export default function RateButton({ captionId, userId }: { captionId: string; userId?: string }) {
+    const [vote, setVote] = useState<'up' | 'down' | null>(null)
+    const [loading, setLoading] = useState(false)
     const router = useRouter()
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    const handleVote = async (isUpvote: boolean) => {
-        // 1. Fetch the user session right when the button is clicked
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) {
-            alert("You must be logged in to vote!")
-            return
-        }
-
-        const activeUserId = user.id
-
-        // 2. Perform the insert with the mandatory audit fields
-        const { error } = await supabase
+    useEffect(() => {
+        if (!userId) return
+        supabase
             .from('caption_votes')
-            .insert({
+            .select('vote_value')
+            .eq('caption_id', captionId)
+            .eq('profile_id', userId)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (data) setVote(data.vote_value === 1 ? 'up' : 'down')
+            })
+    }, [captionId, userId])
+
+    const handleVote = async (isUpvote: boolean) => {
+        if (!userId) return
+        setLoading(true)
+        const newVote = isUpvote ? 'up' : 'down'
+
+        if (vote === newVote) {
+            await supabase.from('caption_votes').delete()
+                .eq('caption_id', captionId).eq('profile_id', userId)
+            setVote(null)
+        } else {
+            await supabase.from('caption_votes').upsert({
                 caption_id: captionId,
                 vote_value: isUpvote ? 1 : -1,
-                profile_id: activeUserId,
-                // THE MANDATORY AUDIT FIELDS
-                created_by_user_id: activeUserId,
-                modified_by_user_id: activeUserId
-                // Note: created_datetime_utc and modified_datetime_utc are handled by the DB
-            })
-
-        if (error) {
-            console.error('Database Error:', error)
-            alert(`Error: ${error.message}`)
-        } else {
-            alert('Vote submitted successfully!')
-            router.refresh() // Refresh the page to show updated counts
+                profile_id: userId,
+                created_by_user_id: userId,
+                modified_by_user_id: userId,
+            }, { onConflict: 'caption_id,profile_id' })
+            setVote(newVote)
         }
+
+        setLoading(false)
+        router.refresh()
     }
 
     return (
-        <div className="flex gap-4 mt-4">
+        <div className="flex gap-2 mt-3">
             <button
                 onClick={() => handleVote(true)}
-                className="px-4 py-2 bg-white border-2 border-gray-400 rounded-md shadow-sm hover:bg-gray-100 font-black flex items-center gap-2 transition-colors"
-                style={{ color: '#000000' }}
+                disabled={loading}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                    vote === 'up'
+                        ? 'bg-green-500 border-green-500 text-white shadow-md'
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-600'
+                }`}
             >
-                <span style={{ fontSize: '1.2rem' }}>👍</span> Upvote
+                👍 Funny
             </button>
-
             <button
                 onClick={() => handleVote(false)}
-                className="px-4 py-2 bg-white border-2 border-gray-400 rounded-md shadow-sm hover:bg-gray-100 font-black flex items-center gap-2 transition-colors"
-                style={{ color: '#000000' }}
+                disabled={loading}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                    vote === 'down'
+                        ? 'bg-red-500 border-red-500 text-white shadow-md'
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-red-400 hover:text-red-500'
+                }`}
             >
-                <span style={{ fontSize: '1.2rem' }}>👎</span> Downvote
+                👎 Not Funny
             </button>
         </div>
     )
