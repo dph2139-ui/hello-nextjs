@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import RateButton from '@/components/RateButton'
 
-interface GeneratedCaption {
+interface SavedCaption {
     id: string
     content: string
 }
@@ -12,7 +12,8 @@ interface GeneratedCaption {
 export default function ImageUploader({ userId }: { userId?: string }) {
     const [uploading, setUploading] = useState(false)
     const [imagePreview, setImagePreview] = useState<string | null>(null)
-    const [captions, setCaptions] = useState<GeneratedCaption[]>([])
+    const [captions, setCaptions] = useState<SavedCaption[]>([])
+    const [error, setError] = useState<string | null>(null)
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,12 +26,13 @@ export default function ImageUploader({ userId }: { userId?: string }) {
 
         setUploading(true)
         setCaptions([])
+        setError(null)
         setImagePreview(URL.createObjectURL(file))
 
         try {
             const { data: { session } } = await supabase.auth.getSession()
             const token = session?.access_token
-            if (!token) throw new Error("Please log in again.")
+            if (!token) throw new Error('Please log in again.')
 
             const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
 
@@ -54,25 +56,33 @@ export default function ImageUploader({ userId }: { userId?: string }) {
                 method: 'POST', headers, body: JSON.stringify({ imageId })
             })
             const generatedCaptions = await res4.json()
+            const captionList = Array.isArray(generatedCaptions) ? generatedCaptions : [generatedCaptions]
 
-            // Step 5: Save to DB and collect inserted IDs
-            const saved: GeneratedCaption[] = []
-            if (userId && Array.isArray(generatedCaptions)) {
-                for (const caption of generatedCaptions) {
+            // Step 5: Save each caption to DB (without image_url — save only known-good columns)
+            if (userId) {
+                for (const caption of captionList) {
                     const content = typeof caption === 'string' ? caption : (caption.content || '')
-                    const { data } = await supabase
-                        .from('captions')
-                        .insert([{ content, image_id: imageId, image_url: cdnUrl, created_by_user_id: userId, modified_by_user_id: userId }])
-                        .select('id')
-                        .single()
-                    if (data) saved.push({ id: data.id, content })
+                    await supabase.from('captions').insert([{
+                        content,
+                        image_id: imageId,
+                        created_by_user_id: userId,
+                        modified_by_user_id: userId,
+                    }])
                 }
             }
 
-            setCaptions(saved)
+            // Step 6: Fetch the IDs of what we just saved so RateButtons work
+            const { data: saved } = await supabase
+                .from('captions')
+                .select('id, content')
+                .eq('image_id', imageId)
+                .order('created_datetime_utc', { ascending: false })
+                .limit(captionList.length)
+
+            setCaptions(saved || [])
         } catch (err: any) {
             console.error(err)
-            alert('Error: ' + err.message)
+            setError(err.message)
         } finally {
             setUploading(false)
         }
@@ -89,6 +99,7 @@ export default function ImageUploader({ userId }: { userId?: string }) {
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
                 {uploading && <p className="mt-3 text-sm text-blue-600 font-medium animate-pulse">Analyzing image and generating captions…</p>}
+                {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
             </div>
 
             {imagePreview && captions.length > 0 && (

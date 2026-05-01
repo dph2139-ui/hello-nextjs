@@ -63,17 +63,6 @@ export default async function Home() {
                             <ul className="space-y-4">
                                 {captions.map((item) => (
                                     <li key={item.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                                        {item.image_url ? (
-                                            <img
-                                                src={item.image_url}
-                                                alt="Caption image"
-                                                className="w-full max-h-72 object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-300 text-sm">
-                                                No image
-                                            </div>
-                                        )}
                                         <div className="p-4">
                                             <p className="font-semibold text-gray-800 text-lg leading-snug">{item.content}</p>
                                             <RateButton captionId={item.id} userId={userId} />
